@@ -1,67 +1,107 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Raspadinha Açaí</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #4B0082;
+      background: #4b0082;
       color: #fff;
+      font-family: Arial, sans-serif;
       text-align: center;
+      margin: 0;
       padding: 20px;
     }
     h1 {
-      color: #FFD700;
+      color: #ffcc00;
     }
-    #scratchCanvas {
-      margin-top: 20px;
+    .scratch-container {
+      margin: 20px auto;
+      width: 320px;
+    }
+    .scratch-area {
+      position: relative;
+      width: 300px;
+      height: 120px;
+      margin: 0 auto 20px auto;
+      background: #aaa;
       border-radius: 12px;
       cursor: pointer;
     }
-    .prize {
+    .prize-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
       margin-top: 20px;
-      font-size: 22px;
+      justify-items: center;
+    }
+    .prize {
+      background: #ffcc00;
+      color: #4b0082;
       font-weight: bold;
-      color: #FFD700;
+      padding: 15px;
+      border-radius: 12px;
+      width: 120px;
+      text-align: center;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
   <h1>🎉 Raspadinha Açaí 🎉</h1>
   <p>Raspe a área cinza para descobrir seu prêmio!</p>
-  <canvas id="scratchCanvas" width="300" height="150"></canvas>
-  <div id="result" class="prize"></div>
+
+  <div class="scratch-container">
+    <canvas id="scratch" class="scratch-area"></canvas>
+    <div id="prizeText" class="hidden"></div>
+  </div>
+
+  <div class="prize-grid">
+    <div class="prize">1 Açaí<br>300ml</div>
+    <div class="prize">1 Açaí<br>400ml</div>
+    <div class="prize">1 Pastel<br>Tradicional</div>
+    <div class="prize">1 Pastel<br>Gourmet</div>
+    <div class="prize">Não foi<br>dessa vez</div>
+  </div>
 
   <script>
-    const canvas = document.getElementById("scratchCanvas");
+    const prizes = [
+      "1 Açaí de 300ml",
+      "1 Açaí de 400ml",
+      "1 Pastel Tradicional",
+      "1 Pastel Gourmet",
+      "Não foi dessa vez"
+    ];
+
+    const canvas = document.getElementById("scratch");
     const ctx = canvas.getContext("2d");
+    canvas.width = 300;
+    canvas.height = 120;
 
-    // Fundo com a mensagem de prêmio
-    let prizeText = "😔 Não foi dessa vez!";
-    let scratchCount = localStorage.getItem("scratchCount") || 0;
-    scratchCount = parseInt(scratchCount);
-
-    if ((scratchCount + 1) % 5 === 0) {
-      prizeText = "🎁 Você ganhou um Açaí 300ml!";
-    }
-
-    // Preenche fundo com o prêmio/resultado
-    ctx.fillStyle = "#4B0082";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#FFD700";
-    ctx.font = "20px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(prizeText, canvas.width / 2, canvas.height / 2);
-
-    // Camada cinza para raspar
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#C0C0C0";
+    // Pintar área cinza inicial
+    ctx.fillStyle = "#aaa";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let isDrawing = false;
+    const prizeText = document.getElementById("prizeText");
+
+    // Controle de raspadas com localStorage
+    let plays = localStorage.getItem("raspadinhaPlays") || 0;
+    plays = parseInt(plays);
+
+    let prize;
+    if (plays === 4) {
+      prize = "🎉 Parabéns! Você ganhou 1 Açaí de 300ml 🎉";
+    } else {
+      prize = prizes[Math.floor(Math.random() * prizes.length)];
+    }
+
+    function showPrize() {
+      prizeText.classList.remove("hidden");
+      prizeText.innerHTML = `<h2>${prize}</h2>`;
+    }
 
     function scratch(e) {
       if (!isDrawing) return;
@@ -70,33 +110,27 @@
       const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
       ctx.globalCompositeOperation = "destination-out";
       ctx.beginPath();
-      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.arc(x, y, 15, 0, Math.PI * 2);
       ctx.fill();
     }
 
     canvas.addEventListener("mousedown", () => isDrawing = true);
     canvas.addEventListener("mouseup", () => isDrawing = false);
     canvas.addEventListener("mousemove", scratch);
+
     canvas.addEventListener("touchstart", () => isDrawing = true);
     canvas.addEventListener("touchend", () => isDrawing = false);
     canvas.addEventListener("touchmove", scratch);
 
-    // Bloqueia depois da primeira raspagem
-    let alreadyScratched = localStorage.getItem("alreadyScratched");
-    if (alreadyScratched === "true") {
-      document.getElementById("result").innerText = "Você já raspou sua raspadinha desta compra!";
-      canvas.style.pointerEvents = "none";
-    } else {
-      // Marca como raspado ao primeiro movimento
-      canvas.addEventListener("mousedown", () => {
-        localStorage.setItem("alreadyScratched", "true");
-        localStorage.setItem("scratchCount", scratchCount + 1);
-      }, {once: true});
-      canvas.addEventListener("touchstart", () => {
-        localStorage.setItem("alreadyScratched", "true");
-        localStorage.setItem("scratchCount", scratchCount + 1);
-      }, {once: true});
-    }
+    // Revelar prêmio ao soltar
+    canvas.addEventListener("mouseup", () => {
+      showPrize();
+      localStorage.setItem("raspadinhaPlays", plays + 1);
+    });
+    canvas.addEventListener("touchend", () => {
+      showPrize();
+      localStorage.setItem("raspadinhaPlays", plays + 1);
+    });
   </script>
 </body>
 </html>
